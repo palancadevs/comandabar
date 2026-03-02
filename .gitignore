@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local dumps and tests
+schema_dump.sql
+playwright-report/
+test-results/
+scripts/debug-db.js
+scripts/seed-tables.js

@@ -1,65 +1,59 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Utensils, QrCode, Smartphone, ChefHat } from 'lucide-react'
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6">
+      <div className="absolute top-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-800 via-zinc-950 to-zinc-950 -z-10"></div>
+
+      <div className="max-w-4xl w-full text-center space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 mt-12 md:mt-0">
+        <div className="flex justify-center mb-8">
+          <div className="h-24 w-24 bg-primary/10 rounded-3xl flex items-center justify-center border border-primary/20 shadow-[0_0_40px_rgba(234,88,12,0.2)]">
+            <Utensils className="h-12 w-12 text-primary" />
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight">
+            Comanda<span className="text-primary">App</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto leading-relaxed text-balance">
+            El sistema inteligente para restaurantes, bares y pubs.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 max-w-4xl mx-auto text-left">
+          <div className="bg-zinc-900/40 p-6 rounded-3xl border border-zinc-800/50 backdrop-blur-md">
+            <QrCode className="h-8 w-8 text-primary mb-4" />
+            <h3 className="font-bold text-lg mb-2">Pedidos QR</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">Tus clientes piden desde su celular escaneando el código de la mesa. Sin apps ni descargas.</p>
+          </div>
+          <div className="bg-zinc-900/40 p-6 rounded-3xl border border-zinc-800/50 backdrop-blur-md">
+            <ChefHat className="h-8 w-8 text-primary mb-4" />
+            <h3 className="font-bold text-lg mb-2">KDS en Tiempo Real</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">La cocina recibe los pedidos al instante en su pantalla, eliminando el papel y confusiones.</p>
+          </div>
+          <div className="bg-zinc-900/40 p-6 rounded-3xl border border-zinc-800/50 backdrop-blur-md">
+            <Smartphone className="h-8 w-8 text-primary mb-4" />
+            <h3 className="font-bold text-lg mb-2">Gestión Total</h3>
+            <p className="text-zinc-400 text-sm leading-relaxed">Administrá tu menú, mesas y reportes de ventas desde cualquier dispositivo.</p>
+          </div>
         </div>
-      </main>
+
+        <div className="pt-12 flex flex-col sm:flex-row items-center justify-center gap-4 pb-12">
+          <Link href="/auth/register" className="w-full sm:w-auto">
+            <Button size="lg" className="h-14 px-8 text-lg font-bold rounded-full w-full sm:w-auto active:scale-95 transition-transform">
+              Crear mi local
+            </Button>
+          </Link>
+          <Link href="/auth/login" className="w-full sm:w-auto">
+            <Button size="lg" variant="outline" className="h-14 px-8 text-lg font-bold rounded-full w-full sm:w-auto bg-transparent border-zinc-700 hover:bg-zinc-800 text-white active:scale-95 transition-transform">
+              Ingresar al panel
+            </Button>
+          </Link>
+        </div>
+      </div>
     </div>
-  );
+  )
 }

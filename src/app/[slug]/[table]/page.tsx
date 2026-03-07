@@ -6,7 +6,7 @@ export default async function QRPage({
 }: {
     params: Promise<{ slug: string; table: string }>
 }) {
-    const { slug, table: tableName } = await params
+    const { slug, table: tableId } = await params
     const supabase = await createClient()
 
     // 1. Resolve Tenant
@@ -23,7 +23,7 @@ export default async function QRPage({
         .from('tables')
         .select('id, name')
         .eq('tenant_id', tenant.id)
-        .eq('name', tableName) // table name or number from URL
+        .eq('id', tableId) // resolution by UUID from the QR link
         .single()
 
     if (!table) {

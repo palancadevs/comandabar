@@ -41,3 +41,21 @@ export async function deleteCategory(id: string) {
     if (error) throw error
     revalidatePath('/admin/menu/categories')
 }
+
+export async function updateCategory(id: string, formData: FormData) {
+    const supabase = await createClient()
+    const name = formData.get('name') as string
+    const sortOrder = parseInt(formData.get('sortOrder') as string) || 0
+
+    const { error } = await supabase
+        .from('menu_categories')
+        .update({
+            name,
+            sort_order: sortOrder
+        })
+        .eq('id', id)
+
+    if (error) throw error
+    revalidatePath('/admin/menu/categories')
+    revalidatePath('/admin/menu/items')
+}

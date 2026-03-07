@@ -69,7 +69,8 @@ export async function signup(formData: FormData) {
 
     // 3. Insert the User into public.users with role 'admin'
     if (data.user?.id && tenantId) {
-        const { error: insertError } = await supabase.from('users').insert({
+        const adminSupabase = createAdminClient()
+        const { error: insertError } = await adminSupabase.from('users').insert({
             id: data.user.id,
             tenant_id: tenantId,
             email: email,

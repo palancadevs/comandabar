@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function login(formData: FormData) {
     const supabase = await createClient()
@@ -57,14 +58,18 @@ export async function signup(formData: FormData) {
     })
 
     if (rpcError) {
-        console.error('RPC Error:', rpcError)
-        // Rollback or handle error appropriately in production
-        redirect('/auth/register?message=Could not create tenant')
+        console.error('RPC Error creating tenant:', rpcError)
+        return redirect('/auth/register?message=Could not create tenant. ' + rpcError.message)
+    }
+
+    if (!tenantId) {
+        console.error('RPC Error: No tenant ID returned')
+        return redirect('/auth/register?message=Could not retrieve tenant ID')
     }
 
     // 3. Insert the User into public.users with role 'admin'
     if (data.user?.id && tenantId) {
-        await supabase.from('users').insert({
+        const { error: insertError } = await supabase.from('users').insert({
             id: data.user.id,
             tenant_id: tenantId,
             email: email,
@@ -72,6 +77,11 @@ export async function signup(formData: FormData) {
             name: email.split('@')[0],
             active: true
         })
+
+        if (insertError) {
+            console.error('Error inserting into public.users:', insertError)
+            return redirect('/auth/register?message=Failed to assign admin role. ' + insertError.message)
+        }
     }
 
     revalidatePath('/', 'layout')

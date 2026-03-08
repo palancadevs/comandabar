@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Baloo_2, Geist_Mono, Montserrat } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const comandaDisplay = Baloo_2({
@@ -38,6 +39,7 @@ export default function RootLayout({
       >
         {children}
         <Toaster richColors position="top-center" />
+        <SpeedInsights />
       </body>
     </html>
   );

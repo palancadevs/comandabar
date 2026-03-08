@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -16,6 +17,7 @@ export function DeleteMenuItemButton({
     itemName: string
 }) {
     const [loading, setLoading] = useState(false)
+    const router = useRouter()
 
     async function handleDelete() {
         const confirmed = window.confirm(
@@ -29,8 +31,11 @@ export function DeleteMenuItemButton({
         try {
             await deleteMenuItem(itemId)
             toast.success('Plato eliminado con éxito')
+            router.refresh()
         } catch (error: any) {
-            toast.error(error?.message || 'No se pudo eliminar el plato')
+            const message = error?.message || 'No se pudo eliminar el plato'
+            toast.error(message)
+            window.alert(message)
         } finally {
             setLoading(false)
         }

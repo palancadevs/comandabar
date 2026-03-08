@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -16,6 +17,7 @@ export function DeleteCategoryButton({
     categoryName: string
 }) {
     const [loading, setLoading] = useState(false)
+    const router = useRouter()
 
     async function handleDelete() {
         const confirmed = window.confirm(
@@ -29,8 +31,11 @@ export function DeleteCategoryButton({
         try {
             await deleteCategory(categoryId)
             toast.success('Categoría eliminada con éxito')
+            router.refresh()
         } catch (error: any) {
-            toast.error(error?.message || 'No se pudo eliminar la categoría')
+            const message = error?.message || 'No se pudo eliminar la categoría'
+            toast.error(message)
+            window.alert(message)
         } finally {
             setLoading(false)
         }

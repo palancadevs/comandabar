@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Baloo_2, Geist_Mono, Montserrat } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const comandaDisplay = Baloo_2({
@@ -36,6 +37,7 @@ export default function RootLayout({
         className={`${comandaDisplay.variable} ${comandaBody.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   );

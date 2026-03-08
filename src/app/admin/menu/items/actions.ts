@@ -68,13 +68,36 @@ export async function createMenuItem(formData: FormData) {
 
 export async function deleteMenuItem(id: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Unauthorized')
+
+    const { data: userData } = await supabase
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single()
+
+    const { count, error: countError } = await supabase
+        .from('order_items')
+        .select('id', { count: 'exact', head: true })
+        .eq('menu_item_id', id)
+
+    if (countError) throw countError
+
+    if ((count ?? 0) > 0) {
+        throw new Error('No puedes eliminar un plato que ya fue usado en pedidos. Si quieres, lo siguiente correcto es ocultarlo de la carta.')
+    }
+
     const { error } = await supabase
         .from('menu_items')
         .delete()
         .eq('id', id)
+        .eq('tenant_id', userData?.tenant_id)
 
     if (error) throw error
     revalidatePath('/admin/menu/items')
+    revalidatePath('/admin')
+    revalidatePath('/admin/kds')
 }
 
 export async function updateMenuItem(id: string, formData: FormData) {

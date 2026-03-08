@@ -12,10 +12,11 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select'
-import { PlusCircle, Trash2, ImageIcon, Utensils } from 'lucide-react'
-import { createMenuItem, deleteMenuItem } from './actions'
+import { PlusCircle, ImageIcon, Utensils } from 'lucide-react'
+import { createMenuItem } from './actions'
 
 import { EditMenuItemDialog } from './EditMenuItemDialog'
+import { DeleteMenuItemButton } from './DeleteMenuItemButton'
 
 export default async function MenuItemsPage() {
     const supabase = await createClient()
@@ -136,14 +137,10 @@ export default async function MenuItemsPage() {
                                     </div>
                                     <div className="flex items-center gap-1 pr-2">
                                         <EditMenuItemDialog item={item} categories={categories || []} />
-                                        <form action={async () => {
-                                            'use server'
-                                            await deleteMenuItem(item.id)
-                                        }}>
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all rounded-full">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </form>
+                                        <DeleteMenuItemButton
+                                            itemId={item.id}
+                                            itemName={item.name}
+                                        />
                                     </div>
                                 </div>
                             ))}

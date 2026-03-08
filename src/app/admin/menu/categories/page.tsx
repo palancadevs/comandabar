@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PlusCircle, Trash2 } from 'lucide-react'
-import { createCategory, deleteCategory } from './actions'
+import { PlusCircle } from 'lucide-react'
+import { createCategory } from './actions'
 
 import { EditCategoryDialog } from './EditCategoryDialog'
+import { DeleteCategoryButton } from './DeleteCategoryButton'
 
 export default async function CategoriesPage() {
     const supabase = await createClient()
@@ -81,14 +82,10 @@ export default async function CategoriesPage() {
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <EditCategoryDialog category={category} />
-                                        <form action={async () => {
-                                            'use server'
-                                            await deleteCategory(category.id)
-                                        }}>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/60 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </form>
+                                        <DeleteCategoryButton
+                                            categoryId={category.id}
+                                            categoryName={category.name}
+                                        />
                                     </div>
                                 </div>
                             ))}

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Baloo_2, Geist_Mono, Montserrat } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const comandaDisplay = Baloo_2({
+  variable: "--font-comanda-display",
   subsets: ["latin"],
+  weight: ["700", "800"],
 });
 
 const geistMono = Geist_Mono({
@@ -12,9 +13,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const comandaBody = Montserrat({
+  variable: "--font-comanda-body",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
 export const metadata: Metadata = {
-  title: "ComandaApp - Gestión Gastronómica MVP",
-  description: "Sistema de comandas QR para locales pequeños y medianos.",
+  title: "COMANDA | Pedidos QR con presencia de marca",
+  description:
+    "Sistema de comandas QR para locales gastronómicos que buscan operar mejor y verse distinto.",
 };
 
 export default function RootLayout({
@@ -23,9 +31,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${comandaDisplay.variable} ${comandaBody.variable} ${geistMono.variable} antialiased`}
       >
         {children}
       </body>

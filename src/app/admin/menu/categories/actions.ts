@@ -32,37 +32,54 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function deleteCategory(id: string) {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Unauthorized')
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            return { ok: false, error: 'Tu sesión expiró. Vuelve a iniciar sesión.' }
+        }
 
-    const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single()
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .single()
 
-    const { count, error: countError } = await supabase
-        .from('menu_items')
-        .select('id', { count: 'exact', head: true })
-        .eq('tenant_id', userData?.tenant_id)
-        .eq('category_id', id)
+        if (userError || !userData?.tenant_id) {
+            return { ok: false, error: 'No se pudo identificar el local de esta cuenta.' }
+        }
 
-    if (countError) throw countError
+        const { count, error: countError } = await supabase
+            .from('menu_items')
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', userData.tenant_id)
+            .eq('category_id', id)
 
-    if ((count ?? 0) > 0) {
-        throw new Error('No puedes eliminar una categoría que todavía tiene platos. Muévelos o bórralos primero.')
+        if (countError) {
+            return { ok: false, error: 'No se pudo validar si la categoría tiene platos asociados.' }
+        }
+
+        if ((count ?? 0) > 0) {
+            return { ok: false, error: 'No puedes eliminar una categoría que todavía tiene platos. Muévelos o bórralos primero.' }
+        }
+
+        const { error } = await supabase
+            .from('menu_categories')
+            .delete()
+            .eq('id', id)
+            .eq('tenant_id', userData.tenant_id)
+
+        if (error) {
+            return { ok: false, error: 'No se pudo eliminar la categoría.' }
+        }
+
+        revalidatePath('/admin/menu/categories')
+        revalidatePath('/admin/menu/items')
+
+        return { ok: true }
+    } catch {
+        return { ok: false, error: 'Ocurrió un error inesperado al eliminar la categoría.' }
     }
-
-    const { error } = await supabase
-        .from('menu_categories')
-        .delete()
-        .eq('id', id)
-        .eq('tenant_id', userData?.tenant_id)
-
-    if (error) throw error
-    revalidatePath('/admin/menu/categories')
-    revalidatePath('/admin/menu/items')
 }
 
 export async function updateCategory(id: string, formData: FormData) {

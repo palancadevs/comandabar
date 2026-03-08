@@ -29,11 +29,19 @@ export function DeleteMenuItemButton({
         setLoading(true)
 
         try {
-            await deleteMenuItem(itemId)
+            const result = await deleteMenuItem(itemId)
+
+            if (!result?.ok) {
+                const message = result?.error || 'No se pudo eliminar el plato'
+                toast.error(message)
+                window.alert(message)
+                return
+            }
+
             toast.success('Plato eliminado con éxito')
             router.refresh()
-        } catch (error: any) {
-            const message = error?.message || 'No se pudo eliminar el plato'
+        } catch {
+            const message = 'Ocurrió un error inesperado al eliminar el plato'
             toast.error(message)
             window.alert(message)
         } finally {

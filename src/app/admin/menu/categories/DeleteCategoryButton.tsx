@@ -29,11 +29,19 @@ export function DeleteCategoryButton({
         setLoading(true)
 
         try {
-            await deleteCategory(categoryId)
+            const result = await deleteCategory(categoryId)
+
+            if (!result?.ok) {
+                const message = result?.error || 'No se pudo eliminar la categoría'
+                toast.error(message)
+                window.alert(message)
+                return
+            }
+
             toast.success('Categoría eliminada con éxito')
             router.refresh()
-        } catch (error: any) {
-            const message = error?.message || 'No se pudo eliminar la categoría'
+        } catch {
+            const message = 'Ocurrió un error inesperado al eliminar la categoría'
             toast.error(message)
             window.alert(message)
         } finally {

@@ -19,7 +19,7 @@ function formatPrice(value: number) {
   return currency.format(value || 0)
 }
 
-export default function MenuContent({ tenant, categories, tableId }: any) {
+export default function MenuContent({ tenant, categories, tableId, tableName }: any) {
   const [cart, setCart] = useState<any[]>([])
   const [isPending, startTransition] = useTransition()
   const [isCartOpen, setIsCartOpen] = useState(false)
@@ -90,9 +90,9 @@ export default function MenuContent({ tenant, categories, tableId }: any) {
                   <div className="brand-chip px-4 py-2 text-[0.68rem] font-extrabold uppercase tracking-[0.18em]">
                     Menu QR
                   </div>
-                  {tableId && (
+                  {tableName && (
                     <div className="rounded-full border-2 border-[var(--brand-black)] bg-[var(--brand-black)] px-4 py-2 text-[0.68rem] font-extrabold uppercase tracking-[0.18em] text-[var(--brand-cream)]">
-                      Mesa detectada
+                      {tableName}
                     </div>
                   )}
                 </div>
@@ -120,12 +120,21 @@ export default function MenuContent({ tenant, categories, tableId }: any) {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="brand-panel-soft bg-[color:color-mix(in_srgb,var(--tenant-primary)_14%,white)] px-4 py-4">
-                    <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-[rgba(18,13,10,0.65)]">
-                      Estilo
-                    </p>
-                    <p className="mt-2 font-display text-2xl leading-none">Retro-pop</p>
-                  </div>
+                  {tableName ? (
+                    <div className="brand-panel-soft bg-[color:color-mix(in_srgb,var(--tenant-primary)_14%,white)] px-4 py-4">
+                      <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-[rgba(18,13,10,0.65)]">
+                        Mesa actual
+                      </p>
+                      <p className="mt-2 font-display text-2xl leading-none">{tableName}</p>
+                    </div>
+                  ) : (
+                    <div className="brand-panel-soft bg-[color:color-mix(in_srgb,var(--tenant-primary)_14%,white)] px-4 py-4">
+                      <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-[rgba(18,13,10,0.65)]">
+                        Canal
+                      </p>
+                      <p className="mt-2 font-display text-2xl leading-none">Menu QR</p>
+                    </div>
+                  )}
                   <div className="brand-panel-soft bg-[var(--brand-cream-strong)] px-4 py-4">
                     <p className="text-[0.62rem] font-extrabold uppercase tracking-[0.18em] text-[rgba(18,13,10,0.65)]">
                       Pedido

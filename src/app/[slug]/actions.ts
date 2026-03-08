@@ -22,8 +22,8 @@ export async function createOrder({ tenantId, tableId, items }: {
             .from('table_sessions')
             .select('id')
             .eq('table_id', tableId)
-            .eq('status', 'abierta')
-            .order('created_at', { ascending: false })
+            .is('closed_at', null)
+            .order('opened_at', { ascending: false })
             .limit(1)
             .single()
 
@@ -36,7 +36,6 @@ export async function createOrder({ tenantId, tableId, items }: {
                 .insert({
                     tenant_id: tenantId,
                     table_id: tableId,
-                    status: 'abierta'
                 })
                 .select()
                 .single()
@@ -46,6 +45,11 @@ export async function createOrder({ tenantId, tableId, items }: {
             } else {
                 sessionId = newSession.id
             }
+
+            await supabase
+                .from('tables')
+                .update({ status: 'ocupada' })
+                .eq('id', tableId)
         }
     }
 
@@ -78,6 +82,15 @@ export async function createOrder({ tenantId, tableId, items }: {
 
     if (itemsError) throw new Error(itemsError.message)
 
-    revalidatePath('/admin/orders') // For the KDS
+    if (tableId) {
+        await supabase
+            .from('tables')
+            .update({ status: 'ocupada' })
+            .eq('id', tableId)
+    }
+
+    revalidatePath('/admin')
+    revalidatePath('/admin/tables')
+    revalidatePath('/admin/kds')
     return { success: true, orderId: order.id }
 }

@@ -1,10 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
-import { Card, CardContent } from '@/components/ui/card'
-import { ShoppingBag, ChevronRight, Utensils } from 'lucide-react'
 import MenuContent from './MenuContent'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 
 export default async function PublicMenuPage({
     params,
@@ -26,6 +22,19 @@ export default async function PublicMenuPage({
 
     if (!tenant) notFound()
 
+    let table = null
+
+    if (tableId) {
+        const { data: resolvedTable } = await supabase
+            .from('tables')
+            .select('id, name')
+            .eq('tenant_id', tenant.id)
+            .eq('id', tableId)
+            .single()
+
+        table = resolvedTable
+    }
+
     // 2. Fetch Categories & Items
     const { data: categories } = await supabase
         .from('menu_categories')
@@ -39,6 +48,7 @@ export default async function PublicMenuPage({
             tenant={tenant}
             categories={categories}
             tableId={tableId}
+            tableName={table?.name || null}
         />
     )
 }

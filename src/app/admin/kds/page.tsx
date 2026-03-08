@@ -27,10 +27,10 @@ export default async function KDSPage() {
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">KDS - Cocina</h1>
+                <h1 className="text-3xl font-bold">Cocina</h1>
                 <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-sm text-muted-foreground font-medium">Real-time conectado</span>
+                    <span className="text-sm text-muted-foreground font-medium">Conectado en tiempo real</span>
                 </div>
             </div>
 

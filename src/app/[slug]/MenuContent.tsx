@@ -75,12 +75,12 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--tenant-primary)] pb-32 text-[var(--brand-black)]" style={menuTheme}>
+    <div className="min-h-screen w-full max-w-full touch-pan-y overflow-x-hidden bg-[var(--tenant-primary)] pb-32 text-[var(--brand-black)]" style={menuTheme}>
       <div className="brand-grid absolute inset-0 opacity-20" />
       <div className="absolute -left-20 top-32 h-56 w-56 rounded-full border-[3px] border-[var(--brand-black)] bg-[var(--brand-yellow)]/40" />
       <div className="absolute right-[-5rem] top-24 h-44 w-44 rounded-[2rem] border-[3px] border-[var(--brand-black)] bg-[var(--brand-red)]/25 rotate-12" />
 
-      <div className="relative mx-auto max-w-6xl px-4 py-4 md:px-6 md:py-6">
+      <div className="relative mx-auto w-full max-w-6xl overflow-x-hidden px-4 py-4 md:px-6 md:py-6">
         <section className="brand-panel overflow-hidden bg-[var(--brand-cream)]">
           <div className="grid lg:grid-cols-[1.02fr_0.98fr]">
             <div className="relative overflow-hidden p-6 md:p-8">

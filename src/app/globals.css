@@ -126,12 +126,18 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
   html {
     background: var(--brand-cream);
+    overflow-x: hidden;
+    width: 100%;
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
     background-image:
       radial-gradient(circle at top left, color-mix(in srgb, var(--brand-orange) 16%, transparent) 0, transparent 28rem),
       radial-gradient(circle at bottom right, color-mix(in srgb, var(--brand-yellow) 18%, transparent) 0, transparent 24rem);

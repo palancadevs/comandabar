@@ -18,7 +18,7 @@ export default async function RegisterPage({
                 <CardHeader>
                     <CardTitle className="text-2xl text-center">Registra tu Local</CardTitle>
                     <CardDescription className="text-center">
-                        Prueba ComandaApp gratis por 14 días. Sin tarjeta de crédito.
+                        Primer mes gratis. Luego $40.000 ARS por mes.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

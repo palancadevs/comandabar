@@ -1,9 +1,8 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { ChefHat, CreditCard, ReceiptText } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/server'
+import { getAdminContext } from '@/lib/auth/admin'
 
 import { AdminDashboardView } from './AdminDashboardView'
 
@@ -68,101 +67,58 @@ function getPercentageChange(current: number, previous: number) {
   return Math.round(((current - previous) / previous) * 100)
 }
 
-export default async function AdminDashboardPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+function addDays(date: Date, days: number) {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
 
-  if (!user) redirect('/auth/login')
+function buildHourlySeries(sessions: any[]) {
+  const totals = Array.from({ length: 24 }, () => 0)
 
-  const { data: userData } = await supabase
-    .from('users')
-    .select('tenant_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!userData?.tenant_id) redirect('/auth/login')
-
-  const now = new Date()
-  const startOfDay = new Date(now)
-  startOfDay.setHours(0, 0, 0, 0)
-
-  const startOfWeek = new Date(now)
-  const mondayOffset = (startOfWeek.getDay() + 6) % 7
-  startOfWeek.setDate(startOfWeek.getDate() - mondayOffset)
-  startOfWeek.setHours(0, 0, 0, 0)
-
-  const startOfPrevWeek = new Date(startOfWeek)
-  startOfPrevWeek.setDate(startOfPrevWeek.getDate() - 7)
-
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-
-  const [
-    { data: tenant },
-    { data: tables },
-    { data: items },
-    { data: activeOrders },
-    { data: analyticsOrders },
-    { data: closedSessions },
-  ] =
-    await Promise.all([
-      supabase
-        .from('tenants')
-        .select('name, trial_ends_at, subscription_status')
-        .eq('id', userData.tenant_id)
-        .single(),
-      supabase.from('tables').select('id, status').eq('tenant_id', userData.tenant_id),
-      supabase.from('menu_items').select('id, name, available').eq('tenant_id', userData.tenant_id),
-      supabase
-        .from('orders')
-        .select('id')
-        .eq('tenant_id', userData.tenant_id)
-        .in('status', ['pendiente', 'en_preparacion']),
-      supabase
-        .from('orders')
-        .select('id, created_at, table_session_id, order_items(quantity, unit_price, menu_item_id, menu_items(name))')
-        .eq('tenant_id', userData.tenant_id)
-        .gte('created_at', startOfPrevMonth.toISOString()),
-      supabase
-        .from('table_sessions')
-        .select('id, closed_at, total_amount, payment_method')
-        .eq('tenant_id', userData.tenant_id)
-        .not('closed_at', 'is', null)
-        .gte('closed_at', startOfPrevMonth.toISOString()),
-    ])
-
-  const closedTodaySessions = getRangeSessions(closedSessions || [], startOfDay)
-  const currentWeekSessions = getRangeSessions(closedSessions || [], startOfWeek)
-  const previousWeekSessions = getRangeSessions(closedSessions || [], startOfPrevWeek, startOfWeek)
-  const currentMonthSessions = getRangeSessions(closedSessions || [], startOfMonth)
-  const previousMonthSessions = getRangeSessions(closedSessions || [], startOfPrevMonth, startOfMonth)
-  const closedSessionIds = new Set((currentMonthSessions || []).map((session: any) => session.id))
-  const soldOrdersThisMonth = (analyticsOrders || []).filter((order: any) => order.table_session_id && closedSessionIds.has(order.table_session_id))
-
-  const todayRevenue = sumSessions(closedTodaySessions)
-  const averageTicket = closedTodaySessions.length > 0 ? todayRevenue / closedTodaySessions.length : 0
-  const busyTables = tables?.filter((table) => table.status !== 'libre').length || 0
-
-  const monthlyDailyMap = new Map<string, number>()
-  currentMonthSessions.forEach((session: any) => {
-    const dateKey = new Date(session.closed_at).toISOString().slice(0, 10)
-    monthlyDailyMap.set(dateKey, (monthlyDailyMap.get(dateKey) || 0) + getSessionTotal(session))
+  sessions.forEach((session) => {
+    if (!session.closed_at) return
+    const hour = new Date(session.closed_at).getHours()
+    totals[hour] += getSessionTotal(session)
   })
 
-  const monthlySeries = Array.from({ length: now.getDate() }, (_, index) => {
+  return totals.map((value, hour) => ({
+    label: `${hour}h`,
+    dayLabel: `${hour}:00`,
+    value: Math.round(value),
+  }))
+}
+
+function buildWeeklySeries(startOfWeek: Date, sessions: any[]) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const currentDate = addDays(startOfWeek, index)
+    const nextDate = addDays(currentDate, 1)
+    const daySessions = getRangeSessions(sessions, currentDate, nextDate)
+
+    return {
+      label: currentDate.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', ''),
+      dayLabel: currentDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
+      value: Math.round(sumSessions(daySessions)),
+    }
+  })
+}
+
+function buildMonthlySeries(now: Date, sessions: any[]) {
+  return Array.from({ length: now.getDate() }, (_, index) => {
     const currentDate = new Date(now.getFullYear(), now.getMonth(), index + 1)
-    const key = currentDate.toISOString().slice(0, 10)
+    const nextDate = addDays(currentDate, 1)
+    const daySessions = getRangeSessions(sessions, currentDate, nextDate)
+
     return {
       label: `${index + 1}/${now.getMonth() + 1}`,
       dayLabel: currentDate.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', ''),
-      value: Math.round(monthlyDailyMap.get(key) || 0),
+      value: Math.round(sumSessions(daySessions)),
     }
   })
+}
 
+function buildRankedItems(items: any[], orders: any[]) {
   const itemStats = new Map<string, { name: string; quantity: number; revenue: number }>()
-  const todayItemStats = new Map<string, { name: string; quantity: number }>()
 
   items?.forEach((item) => {
     if (!item.available) return
@@ -173,7 +129,7 @@ export default async function AdminDashboardPage() {
     })
   })
 
-  soldOrdersThisMonth.forEach((order: any) => {
+  orders.forEach((order: any) => {
     order.order_items?.forEach((item: any) => {
       const itemId = item.menu_item_id
       const current = itemStats.get(itemId) || {
@@ -190,30 +146,90 @@ export default async function AdminDashboardPage() {
     })
   })
 
-  const soldTodaySessionIds = new Set((closedTodaySessions || []).map((session: any) => session.id))
-  const soldOrdersToday = (analyticsOrders || []).filter((order: any) => order.table_session_id && soldTodaySessionIds.has(order.table_session_id))
-  const todayItemsCount = getItemsSold(soldOrdersToday)
-
-  soldOrdersToday.forEach((order: any) => {
-    order.order_items?.forEach((item: any) => {
-      const itemId = item.menu_item_id
-      const current = todayItemStats.get(itemId) || {
-        name: item.menu_items?.name || 'Producto',
-        quantity: 0,
-      }
-
-      todayItemStats.set(itemId, {
-        name: current.name,
-        quantity: current.quantity + Number(item.quantity || 0),
-      })
-    })
-  })
-
   const rankedItems = Array.from(itemStats.values())
-  const topItems = [...rankedItems].sort((a, b) => b.quantity - a.quantity).slice(0, 5)
-  const lowItems = [...rankedItems].sort((a, b) => a.quantity - b.quantity).slice(0, 5)
-  const topTodayItem =
-    [...todayItemStats.values()].sort((a, b) => b.quantity - a.quantity)[0]?.name || 'Sin datos todavía'
+
+  return {
+    top: [...rankedItems].sort((a, b) => b.quantity - a.quantity).slice(0, 5),
+    low: [...rankedItems].sort((a, b) => a.quantity - b.quantity).slice(0, 5),
+    topName: [...rankedItems].sort((a, b) => b.quantity - a.quantity)[0]?.name || 'Sin datos todavía',
+  }
+}
+
+export default async function AdminDashboardPage() {
+  const { supabase, tenantId } = await getAdminContext()
+
+  const now = new Date()
+  const startOfDay = new Date(now)
+  startOfDay.setHours(0, 0, 0, 0)
+
+  const startOfWeek = new Date(now)
+  const mondayOffset = (startOfWeek.getDay() + 6) % 7
+  startOfWeek.setDate(startOfWeek.getDate() - mondayOffset)
+  startOfWeek.setHours(0, 0, 0, 0)
+
+  const startOfPrevWeek = new Date(startOfWeek)
+  startOfPrevWeek.setDate(startOfPrevWeek.getDate() - 7)
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const startOfTomorrow = addDays(startOfDay, 1)
+  const startOfYesterday = addDays(startOfDay, -1)
+
+  const [
+    { data: tenant },
+    { data: tables },
+    { data: items },
+    { data: activeOrders },
+    { data: analyticsOrders },
+    { data: closedSessions },
+  ] =
+    await Promise.all([
+      supabase
+        .from('tenants')
+        .select('name, trial_ends_at, subscription_status')
+        .eq('id', tenantId)
+        .single(),
+      supabase.from('tables').select('id, status').eq('tenant_id', tenantId),
+      supabase.from('menu_items').select('id, name, available').eq('tenant_id', tenantId),
+      supabase
+        .from('orders')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .in('status', ['pendiente', 'en_preparacion']),
+      supabase
+        .from('orders')
+        .select('id, created_at, table_session_id, order_items(quantity, unit_price, menu_item_id, menu_items(name))')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', startOfPrevMonth.toISOString()),
+      supabase
+        .from('table_sessions')
+        .select('id, closed_at, total_amount, payment_method')
+        .eq('tenant_id', tenantId)
+        .not('closed_at', 'is', null)
+        .gte('closed_at', startOfPrevMonth.toISOString()),
+    ])
+
+  const closedTodaySessions = getRangeSessions(closedSessions || [], startOfDay, startOfTomorrow)
+  const closedYesterdaySessions = getRangeSessions(closedSessions || [], startOfYesterday, startOfDay)
+  const currentWeekSessions = getRangeSessions(closedSessions || [], startOfWeek)
+  const previousWeekSessions = getRangeSessions(closedSessions || [], startOfPrevWeek, startOfWeek)
+  const currentMonthSessions = getRangeSessions(closedSessions || [], startOfMonth)
+  const previousMonthSessions = getRangeSessions(closedSessions || [], startOfPrevMonth, startOfMonth)
+  const daySessionIds = new Set((closedTodaySessions || []).map((session: any) => session.id))
+  const weekSessionIds = new Set((currentWeekSessions || []).map((session: any) => session.id))
+  const monthSessionIds = new Set((currentMonthSessions || []).map((session: any) => session.id))
+  const soldOrdersToday = (analyticsOrders || []).filter((order: any) => order.table_session_id && daySessionIds.has(order.table_session_id))
+  const soldOrdersThisWeek = (analyticsOrders || []).filter((order: any) => order.table_session_id && weekSessionIds.has(order.table_session_id))
+  const soldOrdersThisMonth = (analyticsOrders || []).filter((order: any) => order.table_session_id && monthSessionIds.has(order.table_session_id))
+
+  const todayRevenue = sumSessions(closedTodaySessions)
+  const averageTicket = closedTodaySessions.length > 0 ? todayRevenue / closedTodaySessions.length : 0
+  const busyTables = tables?.filter((table) => table.status !== 'libre').length || 0
+  const todayItemsCount = getItemsSold(soldOrdersToday)
+  const dayRankings = buildRankedItems(items || [], soldOrdersToday)
+  const weekRankings = buildRankedItems(items || [], soldOrdersThisWeek)
+  const monthRankings = buildRankedItems(items || [], soldOrdersThisMonth)
+  const topTodayItem = dayRankings.topName
 
   const comparison = {
     weekCurrent: Math.round(sumSessions(currentWeekSessions)),
@@ -222,6 +238,75 @@ export default async function AdminDashboardPage() {
     monthCurrent: Math.round(sumSessions(currentMonthSessions)),
     monthPrevious: Math.round(sumSessions(previousMonthSessions)),
     monthChange: getPercentageChange(sumSessions(currentMonthSessions), sumSessions(previousMonthSessions)),
+  }
+
+  const analysisPeriods = {
+    day: {
+      label: 'Hoy',
+      description: 'Lectura rápida del día actual.',
+      summary: {
+        revenue: Math.round(sumSessions(closedTodaySessions)),
+        orders: getItemsSold(soldOrdersToday),
+        closedTables: closedTodaySessions.length,
+        averageTicket: closedTodaySessions.length > 0 ? sumSessions(closedTodaySessions) / closedTodaySessions.length : 0,
+        topItem: dayRankings.topName,
+      },
+      series: buildHourlySeries(closedTodaySessions),
+      comparison: {
+        label: 'Hoy vs ayer',
+        currentLabel: 'Hoy',
+        previousLabel: 'Ayer',
+        current: Math.round(sumSessions(closedTodaySessions)),
+        previous: Math.round(sumSessions(closedYesterdaySessions)),
+        change: getPercentageChange(sumSessions(closedTodaySessions), sumSessions(closedYesterdaySessions)),
+      },
+      topItems: dayRankings.top,
+      lowItems: dayRankings.low,
+    },
+    week: {
+      label: 'Semana',
+      description: 'Seguimiento de la semana en curso.',
+      summary: {
+        revenue: Math.round(sumSessions(currentWeekSessions)),
+        orders: getItemsSold(soldOrdersThisWeek),
+        closedTables: currentWeekSessions.length,
+        averageTicket: currentWeekSessions.length > 0 ? sumSessions(currentWeekSessions) / currentWeekSessions.length : 0,
+        topItem: weekRankings.topName,
+      },
+      series: buildWeeklySeries(startOfWeek, closedSessions || []),
+      comparison: {
+        label: 'Semana actual vs anterior',
+        currentLabel: 'Actual',
+        previousLabel: 'Anterior',
+        current: Math.round(sumSessions(currentWeekSessions)),
+        previous: Math.round(sumSessions(previousWeekSessions)),
+        change: getPercentageChange(sumSessions(currentWeekSessions), sumSessions(previousWeekSessions)),
+      },
+      topItems: weekRankings.top,
+      lowItems: weekRankings.low,
+    },
+    month: {
+      label: 'Mes',
+      description: 'Vista acumulada del mes actual.',
+      summary: {
+        revenue: Math.round(sumSessions(currentMonthSessions)),
+        orders: getItemsSold(soldOrdersThisMonth),
+        closedTables: currentMonthSessions.length,
+        averageTicket: currentMonthSessions.length > 0 ? sumSessions(currentMonthSessions) / currentMonthSessions.length : 0,
+        topItem: monthRankings.topName,
+      },
+      series: buildMonthlySeries(now, closedSessions || []),
+      comparison: {
+        label: 'Mes actual vs anterior',
+        currentLabel: 'Actual',
+        previousLabel: 'Anterior',
+        current: Math.round(sumSessions(currentMonthSessions)),
+        previous: Math.round(sumSessions(previousMonthSessions)),
+        change: getPercentageChange(sumSessions(currentMonthSessions), sumSessions(previousMonthSessions)),
+      },
+      topItems: monthRankings.top,
+      lowItems: monthRankings.low,
+    },
   }
 
   return (
@@ -301,16 +386,41 @@ export default async function AdminDashboardPage() {
       </section>
 
       <AdminDashboardView
-        monthlySeries={monthlySeries}
-        comparison={comparison}
-        topItems={topItems.map((item) => ({
-          ...item,
-          revenueLabel: formatPrice(item.revenue),
-        }))}
-        lowItems={lowItems.map((item) => ({
-          ...item,
-          revenueLabel: formatPrice(item.revenue),
-        }))}
+        periods={{
+          day: {
+            ...analysisPeriods.day,
+            topItems: analysisPeriods.day.topItems.map((item) => ({
+              ...item,
+              revenueLabel: formatPrice(item.revenue),
+            })),
+            lowItems: analysisPeriods.day.lowItems.map((item) => ({
+              ...item,
+              revenueLabel: formatPrice(item.revenue),
+            })),
+          },
+          week: {
+            ...analysisPeriods.week,
+            topItems: analysisPeriods.week.topItems.map((item) => ({
+              ...item,
+              revenueLabel: formatPrice(item.revenue),
+            })),
+            lowItems: analysisPeriods.week.lowItems.map((item) => ({
+              ...item,
+              revenueLabel: formatPrice(item.revenue),
+            })),
+          },
+          month: {
+            ...analysisPeriods.month,
+            topItems: analysisPeriods.month.topItems.map((item) => ({
+              ...item,
+              revenueLabel: formatPrice(item.revenue),
+            })),
+            lowItems: analysisPeriods.month.lowItems.map((item) => ({
+              ...item,
+              revenueLabel: formatPrice(item.revenue),
+            })),
+          },
+        }}
       />
 
       <section className="flex flex-wrap gap-3">

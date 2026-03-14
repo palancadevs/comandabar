@@ -3,6 +3,7 @@
 import type { CSSProperties } from 'react'
 import { useState, useTransition } from 'react'
 import { ChevronRight, Minus, Plus, ShoppingBag, Sparkles, Utensils } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -67,9 +68,13 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
         })
         setCart([])
         setIsCartOpen(false)
-        alert('Pedido enviado. La cocina ya lo está viendo.')
+        toast.success('Pedido enviado', {
+          description: 'La cocina ya lo está viendo.',
+        })
       } catch (error: any) {
-        alert(`Error al enviar pedido: ${error.message}`)
+        toast.error('No pudimos enviar tu pedido', {
+          description: error.message,
+        })
       }
     })
   }

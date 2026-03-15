@@ -12,6 +12,32 @@ const currency = new Intl.NumberFormat('es-AR', {
   maximumFractionDigits: 0,
 })
 
+const BUSINESS_TIME_ZONE = 'America/Argentina/Salta'
+
+const dateKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+const weekdayFormatter = new Intl.DateTimeFormat('es-AR', {
+  timeZone: BUSINESS_TIME_ZONE,
+  weekday: 'short',
+})
+
+const dayLabelFormatter = new Intl.DateTimeFormat('es-AR', {
+  timeZone: BUSINESS_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+})
+
+const hourFormatter = new Intl.DateTimeFormat('es-AR', {
+  timeZone: BUSINESS_TIME_ZONE,
+  hour: '2-digit',
+  hourCycle: 'h23',
+})
+
 function formatPrice(value: number) {
   return currency.format(value || 0)
 }
@@ -41,12 +67,58 @@ function getSessionTotal(session: any) {
   return Number(session.total_amount || 0)
 }
 
-function getRangeSessions(sessions: any[], start: Date, end?: Date) {
-  return sessions.filter((session) => {
-    if (!session.closed_at) return false
-    const closedAt = new Date(session.closed_at)
-    return closedAt >= start && (!end || closedAt < end)
-  })
+function getDateKey(value: string | Date) {
+  return dateKeyFormatter.format(new Date(value))
+}
+
+function getUtcDateFromKey(key: string) {
+  const [year, month, day] = key.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day))
+}
+
+function shiftDateKey(key: string, days: number) {
+  const date = getUtcDateFromKey(key)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function startOfWeekKey(key: string) {
+  const date = getUtcDateFromKey(key)
+  const mondayOffset = (date.getUTCDay() + 6) % 7
+  return shiftDateKey(key, -mondayOffset)
+}
+
+function startOfMonthKey(key: string) {
+  return `${key.slice(0, 8)}01`
+}
+
+function previousMonthKey(key: string) {
+  const date = getUtcDateFromKey(startOfMonthKey(key))
+  date.setUTCMonth(date.getUTCMonth() - 1)
+  return date.toISOString().slice(0, 10)
+}
+
+function getLocalHour(value: string | Date) {
+  return Number(hourFormatter.format(new Date(value)))
+}
+
+function getLocalWeekdayLabel(key: string) {
+  return weekdayFormatter.format(getUtcDateFromKey(key)).replace('.', '')
+}
+
+function getLocalDayLabel(key: string) {
+  return dayLabelFormatter.format(getUtcDateFromKey(key))
+}
+
+function getSessionsByDateKey(sessions: any[]) {
+  return sessions.reduce((map, session) => {
+    if (!session.closed_at) return map
+    const dateKey = getDateKey(session.closed_at)
+    const current = map.get(dateKey) || []
+    current.push(session)
+    map.set(dateKey, current)
+    return map
+  }, new Map<string, any[]>())
 }
 
 function sumSessions(sessions: any[]) {
@@ -78,7 +150,7 @@ function buildHourlySeries(sessions: any[]) {
 
   sessions.forEach((session) => {
     if (!session.closed_at) return
-    const hour = new Date(session.closed_at).getHours()
+    const hour = getLocalHour(session.closed_at)
     totals[hour] += getSessionTotal(session)
   })
 
@@ -89,29 +161,30 @@ function buildHourlySeries(sessions: any[]) {
   }))
 }
 
-function buildWeeklySeries(startOfWeek: Date, sessions: any[]) {
+function buildWeeklySeries(startWeekKey: string, sessionsByDateKey: Map<string, any[]>) {
   return Array.from({ length: 7 }, (_, index) => {
-    const currentDate = addDays(startOfWeek, index)
-    const nextDate = addDays(currentDate, 1)
-    const daySessions = getRangeSessions(sessions, currentDate, nextDate)
+    const currentKey = shiftDateKey(startWeekKey, index)
+    const daySessions = sessionsByDateKey.get(currentKey) || []
 
     return {
-      label: currentDate.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', ''),
-      dayLabel: currentDate.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
+      label: getLocalWeekdayLabel(currentKey),
+      dayLabel: getLocalDayLabel(currentKey),
       value: Math.round(sumSessions(daySessions)),
     }
   })
 }
 
-function buildMonthlySeries(now: Date, sessions: any[]) {
-  return Array.from({ length: now.getDate() }, (_, index) => {
-    const currentDate = new Date(now.getFullYear(), now.getMonth(), index + 1)
-    const nextDate = addDays(currentDate, 1)
-    const daySessions = getRangeSessions(sessions, currentDate, nextDate)
+function buildMonthlySeries(todayKey: string, sessionsByDateKey: Map<string, any[]>) {
+  const currentMonthStart = startOfMonthKey(todayKey)
+  const totalDays = Number(todayKey.slice(-2))
+
+  return Array.from({ length: totalDays }, (_, index) => {
+    const currentKey = shiftDateKey(currentMonthStart, index)
+    const daySessions = sessionsByDateKey.get(currentKey) || []
 
     return {
-      label: `${index + 1}/${now.getMonth() + 1}`,
-      dayLabel: currentDate.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', ''),
+      label: `${index + 1}/${Number(todayKey.slice(5, 7))}`,
+      dayLabel: getLocalWeekdayLabel(currentKey),
       value: Math.round(sumSessions(daySessions)),
     }
   })
@@ -159,21 +232,12 @@ export default async function AdminDashboardPage() {
   const { supabase, tenantId } = await getAdminContext()
 
   const now = new Date()
-  const startOfDay = new Date(now)
-  startOfDay.setHours(0, 0, 0, 0)
-
-  const startOfWeek = new Date(now)
-  const mondayOffset = (startOfWeek.getDay() + 6) % 7
-  startOfWeek.setDate(startOfWeek.getDate() - mondayOffset)
-  startOfWeek.setHours(0, 0, 0, 0)
-
-  const startOfPrevWeek = new Date(startOfWeek)
-  startOfPrevWeek.setDate(startOfPrevWeek.getDate() - 7)
-
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const startOfTomorrow = addDays(startOfDay, 1)
-  const startOfYesterday = addDays(startOfDay, -1)
+  const todayKey = getDateKey(now)
+  const yesterdayKey = shiftDateKey(todayKey, -1)
+  const currentWeekStartKey = startOfWeekKey(todayKey)
+  const previousWeekStartKey = shiftDateKey(currentWeekStartKey, -7)
+  const currentMonthStartKey = startOfMonthKey(todayKey)
+  const previousMonthStartDateKey = previousMonthKey(todayKey)
 
   const [
     { data: tenant },
@@ -200,21 +264,30 @@ export default async function AdminDashboardPage() {
         .from('orders')
         .select('id, created_at, table_session_id, order_items(quantity, unit_price, menu_item_id, menu_items(name))')
         .eq('tenant_id', tenantId)
-        .gte('created_at', startOfPrevMonth.toISOString()),
+        .gte('created_at', `${previousMonthStartDateKey}T00:00:00.000Z`),
       supabase
         .from('table_sessions')
         .select('id, closed_at, total_amount, payment_method')
         .eq('tenant_id', tenantId)
         .not('closed_at', 'is', null)
-        .gte('closed_at', startOfPrevMonth.toISOString()),
+        .gte('closed_at', `${previousMonthStartDateKey}T00:00:00.000Z`),
     ])
 
-  const closedTodaySessions = getRangeSessions(closedSessions || [], startOfDay, startOfTomorrow)
-  const closedYesterdaySessions = getRangeSessions(closedSessions || [], startOfYesterday, startOfDay)
-  const currentWeekSessions = getRangeSessions(closedSessions || [], startOfWeek)
-  const previousWeekSessions = getRangeSessions(closedSessions || [], startOfPrevWeek, startOfWeek)
-  const currentMonthSessions = getRangeSessions(closedSessions || [], startOfMonth)
-  const previousMonthSessions = getRangeSessions(closedSessions || [], startOfPrevMonth, startOfMonth)
+  const sessionsByDateKey = getSessionsByDateKey(closedSessions || [])
+  const closedTodaySessions = sessionsByDateKey.get(todayKey) || []
+  const closedYesterdaySessions = sessionsByDateKey.get(yesterdayKey) || []
+  const currentWeekSessions = Array.from({ length: 7 }, (_, index) =>
+    sessionsByDateKey.get(shiftDateKey(currentWeekStartKey, index)) || []
+  ).flat()
+  const previousWeekSessions = Array.from({ length: 7 }, (_, index) =>
+    sessionsByDateKey.get(shiftDateKey(previousWeekStartKey, index)) || []
+  ).flat()
+  const currentMonthSessions = (closedSessions || []).filter(
+    (session: any) => session.closed_at && getDateKey(session.closed_at).startsWith(currentMonthStartKey.slice(0, 7))
+  )
+  const previousMonthSessions = (closedSessions || []).filter(
+    (session: any) => session.closed_at && getDateKey(session.closed_at).startsWith(previousMonthStartDateKey.slice(0, 7))
+  )
   const daySessionIds = new Set((closedTodaySessions || []).map((session: any) => session.id))
   const weekSessionIds = new Set((currentWeekSessions || []).map((session: any) => session.id))
   const monthSessionIds = new Set((currentMonthSessions || []).map((session: any) => session.id))
@@ -273,7 +346,7 @@ export default async function AdminDashboardPage() {
         averageTicket: currentWeekSessions.length > 0 ? sumSessions(currentWeekSessions) / currentWeekSessions.length : 0,
         topItem: weekRankings.topName,
       },
-      series: buildWeeklySeries(startOfWeek, closedSessions || []),
+      series: buildWeeklySeries(currentWeekStartKey, sessionsByDateKey),
       comparison: {
         label: 'Semana actual vs anterior',
         currentLabel: 'Actual',
@@ -295,7 +368,7 @@ export default async function AdminDashboardPage() {
         averageTicket: currentMonthSessions.length > 0 ? sumSessions(currentMonthSessions) / currentMonthSessions.length : 0,
         topItem: monthRankings.topName,
       },
-      series: buildMonthlySeries(now, closedSessions || []),
+      series: buildMonthlySeries(todayKey, sessionsByDateKey),
       comparison: {
         label: 'Mes actual vs anterior',
         currentLabel: 'Actual',

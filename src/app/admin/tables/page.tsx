@@ -1,10 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ExternalLink, PlusCircle, ReceiptText, Trash2 } from 'lucide-react'
+import { Download, ExternalLink, PlusCircle, ReceiptText, Trash2 } from 'lucide-react'
+import { getAdminContext } from '@/lib/auth/admin'
 
 import { closeTableSession, createTable, deleteTable, openTableSession } from './actions'
 
@@ -19,30 +18,18 @@ function formatPrice(value: number) {
 }
 
 export default async function TablesPage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/auth/login')
-
-    const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id, tenants(slug)')
-        .eq('id', user.id)
-        .single()
-
-    if (!userData?.tenant_id) redirect('/admin')
-
-    const tenantSlug = (userData.tenants as any)?.slug
+    const { supabase, tenantId, tenantSlug } = await getAdminContext()
 
     const [{ data: tables }, { data: activeSessions }] = await Promise.all([
         supabase
             .from('tables')
             .select('*')
-            .eq('tenant_id', userData.tenant_id)
+            .eq('tenant_id', tenantId)
             .order('name', { ascending: true }),
         supabase
             .from('table_sessions')
             .select('id, table_id, opened_at')
-            .eq('tenant_id', userData.tenant_id)
+            .eq('tenant_id', tenantId)
             .is('closed_at', null),
     ])
 
@@ -52,7 +39,7 @@ export default async function TablesPage() {
         ? await supabase
             .from('orders')
             .select('id, table_session_id, status, order_items(quantity, unit_price)')
-            .eq('tenant_id', userData.tenant_id)
+            .eq('tenant_id', tenantId)
             .in('table_session_id', activeSessionIds)
         : { data: [] as any[] }
 
@@ -201,6 +188,11 @@ export default async function TablesPage() {
                                                     <Button asChild variant="outline" size="sm" className="w-full rounded-full border-2 border-[var(--brand-black)] bg-transparent">
                                                         <a href={qrUrl} target="_blank" rel="noopener noreferrer">
                                                             <ExternalLink className="mr-2 h-3 w-3" /> Ver como cliente
+                                                        </a>
+                                                    </Button>
+                                                    <Button asChild variant="outline" size="sm" className="w-full rounded-full border-2 border-[var(--brand-black)] bg-[var(--brand-cream)]">
+                                                        <a href={`/admin/tables/${table.id}/qr-pdf`}>
+                                                            <Download className="mr-2 h-3 w-3" /> Descargar QR en PDF
                                                         </a>
                                                     </Button>
                                                 </div>

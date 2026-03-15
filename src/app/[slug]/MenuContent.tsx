@@ -20,13 +20,37 @@ function formatPrice(value: number) {
   return currency.format(value || 0)
 }
 
+function getContrastTextColor(hexColor: string) {
+  const normalized = hexColor.replace('#', '')
+  const expanded = normalized.length === 3
+    ? normalized
+        .split('')
+        .map((char) => `${char}${char}`)
+        .join('')
+    : normalized
+
+  const value = Number.parseInt(expanded, 16)
+  if (Number.isNaN(value)) {
+    return '#f6edd9'
+  }
+
+  const red = (value >> 16) & 255
+  const green = (value >> 8) & 255
+  const blue = value & 255
+  const luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
+
+  return luminance > 0.62 ? '#120d0a' : '#f6edd9'
+}
+
 export default function MenuContent({ tenant, categories, tableId, tableName }: any) {
   const [cart, setCart] = useState<any[]>([])
   const [isPending, startTransition] = useTransition()
   const [isCartOpen, setIsCartOpen] = useState(false)
   const brandColor = tenant.primary_color || '#ea6a17'
-  const menuTheme = { '--tenant-primary': brandColor } as CSSProperties & {
+  const tenantOnPrimary = getContrastTextColor(brandColor)
+  const menuTheme = { '--tenant-primary': brandColor, '--tenant-on-primary': tenantOnPrimary } as CSSProperties & {
     '--tenant-primary': string
+    '--tenant-on-primary': string
   }
 
   const addToCart = (item: any) => {
@@ -219,7 +243,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
                               </div>
 
                               {quantity > 0 && (
-                                <div className="flex min-w-10 items-center justify-center rounded-full border-2 border-[var(--brand-black)] bg-[var(--tenant-primary)] px-3 py-1 text-sm font-extrabold text-[var(--brand-cream)]">
+                                <div className="flex min-w-10 items-center justify-center rounded-full border-2 border-[var(--brand-black)] bg-[var(--tenant-primary)] px-3 py-1 text-sm font-extrabold text-[var(--tenant-on-primary)]">
                                   {quantity}
                                 </div>
                               )}
@@ -227,7 +251,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
 
                             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                               <p className="text-xl font-extrabold">{formatPrice(item.price)}</p>
-                              <span className="rounded-full border-2 border-[var(--brand-black)] bg-[var(--tenant-primary)] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-[var(--brand-cream)]">
+                              <span className="rounded-full border-2 border-[var(--brand-black)] bg-[var(--tenant-primary)] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-[var(--tenant-on-primary)]">
                                 Agregar
                               </span>
                             </div>
@@ -274,7 +298,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
               >
                 <div className="flex w-full items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-full border-2 border-[var(--brand-black)] bg-[var(--tenant-primary)] text-sm font-extrabold text-[var(--brand-cream)]">
+                    <div className="flex size-10 items-center justify-center rounded-full border-2 border-[var(--brand-black)] bg-[var(--tenant-primary)] text-sm font-extrabold text-[var(--tenant-on-primary)]">
                       {itemCount}
                     </div>
                     <div className="text-left">
@@ -297,7 +321,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
               className="mx-auto h-[84vh] max-w-3xl rounded-t-[2rem] border-x-[3px] border-t-[3px] border-[var(--brand-black)] bg-[var(--brand-cream)] p-0 shadow-[0_-8px_0_var(--brand-black)]"
             >
               <SheetHeader className="border-b-[3px] border-[var(--brand-black)] bg-[var(--tenant-primary)] px-6 py-5">
-                <SheetTitle className="font-display text-4xl leading-none text-[var(--brand-cream)]">
+                <SheetTitle className="font-display text-4xl leading-none text-[var(--tenant-on-primary)]">
                   Tu pedido
                 </SheetTitle>
               </SheetHeader>
@@ -312,7 +336,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
                           {formatPrice(item.price)} por unidad
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 rounded-full border-[3px] border-[var(--brand-black)] bg-[var(--tenant-primary)] px-2 py-1 text-[var(--brand-cream)]">
+                      <div className="flex items-center gap-2 rounded-full border-[3px] border-[var(--brand-black)] bg-[var(--tenant-primary)] px-2 py-1 text-[var(--tenant-on-primary)]">
                         <Button
                           type="button"
                           variant="ghost"
@@ -348,7 +372,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
                       <p className="font-display mt-1 text-4xl leading-none">{formatPrice(total)}</p>
                     </div>
                     <Button
-                      className="h-14 rounded-full border-[3px] border-[var(--brand-black)] bg-[var(--tenant-primary)] px-8 text-base font-extrabold text-[var(--brand-cream)] shadow-[6px_6px_0_var(--brand-black)] transition-transform hover:-translate-y-0.5 hover:bg-[var(--tenant-primary)]"
+                      className="h-14 rounded-full border-[3px] border-[var(--brand-black)] bg-[var(--tenant-primary)] px-8 text-base font-extrabold text-[var(--tenant-on-primary)] shadow-[6px_6px_0_var(--brand-black)] transition-transform hover:-translate-y-0.5 hover:bg-[var(--tenant-primary)]"
                       disabled={isPending || cart.length === 0}
                       onClick={handleSendOrder}
                     >

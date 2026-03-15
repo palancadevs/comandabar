@@ -13,6 +13,16 @@ import { updateOrderStatus } from './actions'
 
 type ConnectionState = 'connecting' | 'live' | 'fallback'
 
+const orderTimeFormatter = new Intl.DateTimeFormat('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Argentina/Salta',
+})
+
+function formatOrderTime(value: string) {
+    return orderTimeFormatter.format(new Date(value))
+}
+
 export default function KDSContent({ initialOrders, tenantId }: { initialOrders: any[]; tenantId: string }) {
     const [orders, setOrders] = useState(initialOrders)
     const [connectionState, setConnectionState] = useState<ConnectionState>('connecting')
@@ -35,6 +45,8 @@ export default function KDSContent({ initialOrders, tenantId }: { initialOrders:
     }
 
     useEffect(() => {
+        void fetchActiveOrders()
+
         const channel = supabase
             .channel(`kds-orders-${tenantId}`)
             .on(
@@ -63,6 +75,7 @@ export default function KDSContent({ initialOrders, tenantId }: { initialOrders:
             .subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
                     setConnectionState('live')
+                    void fetchActiveOrders()
                 }
 
                 if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -118,10 +131,7 @@ export default function KDSContent({ initialOrders, tenantId }: { initialOrders:
                                     <CardTitle className="text-xl">Mesa {order.tables?.name || '??'}</CardTitle>
                                     <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                                         <Clock className="h-3 w-3" />
-                                        {new Date(order.created_at).toLocaleTimeString([], {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                        })}
+                                        {formatOrderTime(order.created_at)}
                                     </div>
                                 </div>
                                 <Badge

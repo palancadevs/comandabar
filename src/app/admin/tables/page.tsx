@@ -1,9 +1,10 @@
+import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Download, ExternalLink, PlusCircle, ReceiptText, Trash2 } from 'lucide-react'
-import { getAdminContext } from '@/lib/auth/admin'
+import { createClient } from '@/lib/supabase/server'
 
 import { closeTableSession, createTable, deleteTable, openTableSession } from './actions'
 
@@ -18,7 +19,29 @@ function formatPrice(value: number) {
 }
 
 export default async function TablesPage() {
-    const { supabase, tenantId, tenantSlug } = await getAdminContext()
+    const supabase = await createClient()
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+        redirect('/auth/login')
+    }
+
+    const { data: userData } = await supabase
+        .from('users')
+        .select('tenant_id, tenants(slug)')
+        .eq('id', user.id)
+        .single()
+
+    if (!userData?.tenant_id) {
+        redirect('/admin')
+    }
+
+    const tenantSlug = Array.isArray(userData.tenants)
+        ? userData.tenants[0]?.slug
+        : (userData.tenants as { slug?: string | null } | null)?.slug
+    const tenantId = userData.tenant_id
 
     const [{ data: tables }, { data: activeSessions }] = await Promise.all([
         supabase

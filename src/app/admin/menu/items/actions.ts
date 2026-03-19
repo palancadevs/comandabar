@@ -117,6 +117,53 @@ export async function deleteMenuItem(id: string) {
     }
 }
 
+export async function setMenuItemAvailability(id: string, available: boolean) {
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+            return { ok: false, error: 'Tu sesión expiró. Vuelve a iniciar sesión.' }
+        }
+
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('tenant_id, tenants(slug)')
+            .eq('id', user.id)
+            .single()
+
+        if (userError || !userData?.tenant_id) {
+            return { ok: false, error: 'No se pudo identificar el local de esta cuenta.' }
+        }
+
+        const { error } = await supabase
+            .from('menu_items')
+            .update({ available })
+            .eq('id', id)
+            .eq('tenant_id', userData.tenant_id)
+
+        if (error) {
+            return { ok: false, error: 'No se pudo actualizar la disponibilidad del plato.' }
+        }
+
+        const tenantRelation = userData.tenants as { slug?: string | null } | Array<{ slug?: string | null }> | null
+        const tenantSlug = Array.isArray(tenantRelation)
+            ? tenantRelation[0]?.slug ?? null
+            : tenantRelation?.slug ?? null
+
+        revalidatePath('/admin/menu/items')
+        revalidatePath('/admin')
+        revalidatePath('/admin/kds')
+
+        if (tenantSlug) {
+            revalidatePath(`/${tenantSlug}`)
+        }
+
+        return { ok: true, available }
+    } catch {
+        return { ok: false, error: 'Ocurrió un error inesperado al actualizar el plato.' }
+    }
+}
+
 export async function updateMenuItem(id: string, formData: FormData) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()

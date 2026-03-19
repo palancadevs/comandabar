@@ -1,5 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,31 +12,25 @@ import {
 } from '@/components/ui/select'
 import { PlusCircle, ImageIcon, Utensils } from 'lucide-react'
 import { createMenuItem } from './actions'
+import { getAdminContext } from '@/lib/auth/admin'
 
 import { EditMenuItemDialog } from './EditMenuItemDialog'
 import { DeleteMenuItemButton } from './DeleteMenuItemButton'
+import { ToggleMenuItemAvailabilityButton } from './ToggleMenuItemAvailabilityButton'
 
 export default async function MenuItemsPage() {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/auth/login')
-
-    const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .single()
+    const { supabase, tenantId } = await getAdminContext()
 
     const { data: categories } = await supabase
         .from('menu_categories')
         .select('*')
-        .eq('tenant_id', userData?.tenant_id)
+        .eq('tenant_id', tenantId)
         .order('sort_order', { ascending: true })
 
     const { data: items } = await supabase
         .from('menu_items')
         .select('*, menu_categories(name)')
-        .eq('tenant_id', userData?.tenant_id)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
 
     // Group items by category for better visualization
@@ -48,9 +40,9 @@ export default async function MenuItemsPage() {
     })) || []
 
     return (
-        <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1">
-                <Card className="border-primary/20 shadow-sm overflow-hidden sticky top-24">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+            <div className="xl:self-start">
+                <Card className="overflow-hidden border-primary/20 shadow-sm xl:sticky xl:top-24">
                     <CardHeader className="bg-primary/5 border-b border-primary/10">
                         <CardTitle className="text-lg">Nuevo Plato</CardTitle>
                     </CardHeader>
@@ -103,15 +95,15 @@ export default async function MenuItemsPage() {
                 </Card>
             </div>
 
-            <div className="lg:col-span-2 space-y-8">
+            <div className="space-y-8">
                 {groupedItems.map((group) => (
                     <div key={group.id} className="space-y-4">
-                        <h2 className="text-xl font-black flex items-center gap-2 text-zinc-800 dark:text-zinc-200 uppercase tracking-widest px-1">
+                        <h2 className="flex items-center gap-2 px-1 text-xl font-black uppercase tracking-widest text-zinc-800 dark:text-zinc-200">
                             {group.name}
                             {group.items.length > 0 && (
                                 <span className="text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-2 py-1 rounded-md">
-                                    {group.items.length}
-                                    e</span>
+                                    {group.items.length} platos
+                                </span>
                             )}
                         </h2>
 
@@ -122,25 +114,53 @@ export default async function MenuItemsPage() {
                                 </p>
                             )}
                             {group.items.map((item: any) => (
-                                <div key={item.id} className="flex items-center gap-4 p-3 border rounded-2xl bg-white dark:bg-zinc-900 group hover:border-primary/50 transition-all hover:shadow-lg">
-                                    <div className="h-20 w-20 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-inner">
-                                        {item.image_url ? (
-                                            <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
-                                        ) : (
-                                            <ImageIcon className="h-6 w-6 text-zinc-300" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-black text-lg truncate">{item.name}</h3>
-                                        <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>
-                                        <p className="font-black text-primary mt-1">${item.price}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1 pr-2">
-                                        <EditMenuItemDialog item={item} categories={categories || []} />
-                                        <DeleteMenuItemButton
-                                            itemId={item.id}
-                                            itemName={item.name}
-                                        />
+                                <div
+                                    key={item.id}
+                                    className="group rounded-2xl border bg-white p-4 transition-all hover:border-primary/50 hover:shadow-lg dark:bg-zinc-900"
+                                >
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                                        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl bg-zinc-100 shadow-inner dark:bg-zinc-800">
+                                            {item.image_url ? (
+                                                <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <ImageIcon className="h-6 w-6 text-zinc-300" />
+                                            )}
+                                        </div>
+
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                                <div className="min-w-0">
+                                                    <h3 className="break-words text-lg font-black leading-tight">{item.name}</h3>
+                                                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                                                        {item.description || 'Sin descripción'}
+                                                    </p>
+                                                    <p className="mt-2 font-black text-primary">${item.price}</p>
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                                    <span
+                                                        className={[
+                                                            'rounded-full border-2 px-3 py-1 text-[0.68rem] font-extrabold uppercase tracking-[0.16em]',
+                                                            item.available
+                                                                ? 'border-emerald-700 bg-emerald-50 text-emerald-800'
+                                                                : 'border-amber-700 bg-amber-50 text-amber-800',
+                                                        ].join(' ')}
+                                                    >
+                                                        {item.available ? 'Visible hoy' : 'No hay hoy'}
+                                                    </span>
+                                                    <ToggleMenuItemAvailabilityButton
+                                                        itemId={item.id}
+                                                        itemName={item.name}
+                                                        available={Boolean(item.available)}
+                                                    />
+                                                    <EditMenuItemDialog item={item} categories={categories || []} />
+                                                    <DeleteMenuItemButton
+                                                        itemId={item.id}
+                                                        itemName={item.name}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

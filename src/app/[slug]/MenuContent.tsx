@@ -6,7 +6,7 @@ import { ChevronRight, Minus, Plus, ShoppingBag, Sparkles, Utensils } from 'luci
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 
 import { createOrder } from './actions'
 
@@ -207,7 +207,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
 
             return (
               <div key={category.id} className="brand-panel bg-[var(--brand-cream)] p-5 md:p-6">
-                <div className="mb-5 flex items-center justify-between gap-4">
+                <div className="mb-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.2em] text-[rgba(18,13,10,0.65)]">
                       Categoría
@@ -230,11 +230,11 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
                         onClick={() => addToCart(item)}
                         className="brand-panel-soft flex w-full flex-col gap-4 bg-[var(--brand-cream-strong)] p-4 text-left transition-transform hover:-translate-y-1"
                       >
-                        <div className="flex gap-4">
+                        <div className="flex flex-col gap-4 sm:flex-row">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <h3 className="font-display text-3xl leading-none">{item.name}</h3>
+                                <h3 className="break-words font-display text-3xl leading-none">{item.name}</h3>
                                 {item.description && (
                                   <p className="mt-3 text-sm font-medium leading-6 text-[rgba(18,13,10,0.72)]">
                                     {item.description}
@@ -257,7 +257,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
                             </div>
                           </div>
 
-                          <div className="brand-panel-soft h-28 w-28 shrink-0 overflow-hidden rounded-[1.4rem] border-[2px] bg-[color:color-mix(in_srgb,var(--tenant-primary)_14%,white)] shadow-[4px_4px_0_var(--brand-black)]">
+                          <div className="brand-panel-soft h-28 w-full overflow-hidden rounded-[1.4rem] border-[2px] bg-[color:color-mix(in_srgb,var(--tenant-primary)_14%,white)] shadow-[4px_4px_0_var(--brand-black)] sm:w-28 sm:shrink-0">
                             {item.image_url ? (
                               <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
                             ) : (
@@ -324,6 +324,9 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
                 <SheetTitle className="font-display text-4xl leading-none text-[var(--tenant-on-primary)]">
                   Tu pedido
                 </SheetTitle>
+                <SheetDescription className="text-sm font-semibold text-[color:color-mix(in_srgb,var(--tenant-on-primary)_78%,transparent)]">
+                  Revisa cantidades y envía el pedido cuando esté listo.
+                </SheetDescription>
               </SheetHeader>
 
               <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
@@ -364,7 +367,7 @@ export default function MenuContent({ tenant, categories, tableId, tableName }: 
 
               <SheetFooter className="border-t-[3px] border-[var(--brand-black)] bg-[var(--brand-cream-strong)] px-6 py-5">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[rgba(18,13,10,0.65)]">
                         Total

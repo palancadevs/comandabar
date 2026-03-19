@@ -54,7 +54,7 @@ export function DeleteMenuItemButton({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 text-destructive/50 hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all rounded-full"
+            className="h-9 w-9 rounded-full text-destructive/60 transition-all hover:bg-destructive/10 hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
             disabled={loading}
             onClick={handleDelete}
         >
